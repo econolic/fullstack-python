@@ -1,0 +1,25 @@
+html {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+body {
+  flex: 1;
+  background-image: linear-gradient(180deg, #eee, #fff 100px, #fff);
+}
+
+.container {
+  max-width: 960px;
+}
+
+textarea {
+  height: 250px;
+}
+
+.navbar-brand img {
+  max-height: 40px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}

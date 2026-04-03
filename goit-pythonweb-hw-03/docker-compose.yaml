@@ -1,0 +1,9 @@
+services:
+  web:
+    build: .
+    container_name: goit-pythonweb-hw-03
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./storage:/app/storage
+    restart: unless-stopped
