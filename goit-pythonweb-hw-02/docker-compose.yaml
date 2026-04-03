@@ -1,0 +1,36 @@
+services:
+  # PostgreSQL database service
+  postgres:
+    image: postgres:15
+    container_name: hw02_postgres
+    environment:
+      POSTGRES_DB: hw02
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "567234"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hw02"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI application service
+  app:
+    build: .
+    container_name: hw02_app
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - PORT=8000
+    volumes:
+      - .:/app
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
