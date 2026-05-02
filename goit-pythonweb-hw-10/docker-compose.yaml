@@ -1,0 +1,58 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: contacts_auth_db
+    environment:
+      POSTGRES_DB: "${POSTGRES_DB:?set POSTGRES_DB in .env}"
+      POSTGRES_USER: "${POSTGRES_USER:?set POSTGRES_USER in .env}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}"
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:?set POSTGRES_USER in .env} -d ${POSTGRES_DB:?set POSTGRES_DB in .env}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+    container_name: contacts_auth_api
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://${POSTGRES_USER:?set POSTGRES_USER in .env}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:?set POSTGRES_DB in .env}"
+      APP_NAME: "Contacts API Auth"
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8000
+      LOG_LEVEL: INFO
+      JWT_SECRET: "${JWT_SECRET:?set JWT_SECRET in .env}"
+      JWT_ALGORITHM: "${JWT_ALGORITHM:-HS256}"
+      JWT_EXPIRATION_SECONDS: "${JWT_EXPIRATION_SECONDS:-3600}"
+      MAIL_USERNAME: "${MAIL_USERNAME:?set MAIL_USERNAME in .env}"
+      MAIL_PASSWORD: "${MAIL_PASSWORD:?set MAIL_PASSWORD in .env}"
+      MAIL_FROM: "${MAIL_FROM:?set MAIL_FROM in .env}"
+      MAIL_PORT: "${MAIL_PORT:-465}"
+      MAIL_SERVER: "${MAIL_SERVER:?set MAIL_SERVER in .env}"
+      MAIL_FROM_NAME: "${MAIL_FROM_NAME:-Contacts API}"
+      MAIL_STARTTLS: "${MAIL_STARTTLS:-False}"
+      MAIL_SSL_TLS: "${MAIL_SSL_TLS:-True}"
+      USE_CREDENTIALS: "${USE_CREDENTIALS:-True}"
+      VALIDATE_CERTS: "${VALIDATE_CERTS:-True}"
+      CLD_NAME: "${CLD_NAME:?set CLD_NAME in .env}"
+      CLD_API_KEY: "${CLD_API_KEY:?set CLD_API_KEY in .env}"
+      CLD_API_SECRET: "${CLD_API_SECRET:?set CLD_API_SECRET in .env}"
+      CORS_ORIGINS: "${CORS_ORIGINS:-*}"
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    command: sh -c "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000"
+
+volumes:
+  postgres_data:
