@@ -1,0 +1,172 @@
+"""init users and contacts
+
+Revision ID: 0001_init_contacts
+Revises:
+Create Date: 2026-04-19 00:00:00
+
+"""
+
+from typing import Sequence, Union
+
+from alembic import op
+import sqlalchemy as sa
+
+# revision identifiers, used by Alembic.
+revision: str = "0001_init_contacts"
+down_revision: Union[str, None] = None
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+
+def upgrade() -> None:
+    op.create_table(
+        "users",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("username", sa.String(length=50), nullable=False),
+        sa.Column("email", sa.String(length=255), nullable=False),
+        sa.Column("hashed_password", sa.String(length=255), nullable=False),
+        sa.Column("avatar", sa.String(length=255), nullable=True),
+        sa.Column(
+            "role",
+            sa.String(length=20),
+            server_default=sa.text("'user'"),
+            nullable=False,
+        ),
+        sa.Column(
+            "confirmed",
+            sa.Boolean(),
+            server_default=sa.text("false"),
+            nullable=False,
+        ),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("email"),
+        sa.UniqueConstraint("username"),
+    )
+    op.create_index(op.f("ix_users_id"), "users", ["id"], unique=False)
+
+    op.create_table(
+        "contacts",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("first_name", sa.String(length=50), nullable=False),
+        sa.Column("last_name", sa.String(length=50), nullable=False),
+        sa.Column("email", sa.String(length=255), nullable=False),
+        sa.Column("phone", sa.String(length=20), nullable=False),
+        sa.Column("birthday", sa.Date(), nullable=False),
+        sa.Column("additional_data", sa.String(length=255), nullable=True),
+        sa.Column("user_id", sa.Integer(), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("user_id", "email", name="uq_contacts_user_email"),
+    )
+    op.create_index(op.f("ix_contacts_id"), "contacts", ["id"], unique=False)
+    op.create_index(op.f("ix_contacts_user_id"), "contacts", ["user_id"], unique=False)
+    op.create_index(
+        op.f("ix_contacts_first_name"), "contacts", ["first_name"], unique=False
+    )
+    op.create_index(
+        op.f("ix_contacts_last_name"), "contacts", ["last_name"], unique=False
+    )
+    op.create_index(op.f("ix_contacts_email"), "contacts", ["email"], unique=False)
+
+    op.create_table(
+        "refresh_tokens",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("user_id", sa.Integer(), nullable=False),
+        sa.Column("jti", sa.String(length=64), nullable=False),
+        sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("revoked_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("replaced_by_jti", sa.String(length=64), nullable=True),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("jti"),
+    )
+    op.create_index(
+        op.f("ix_refresh_tokens_id"), "refresh_tokens", ["id"], unique=False
+    )
+    op.create_index(
+        op.f("ix_refresh_tokens_user_id"),
+        "refresh_tokens",
+        ["user_id"],
+        unique=False,
+    )
+
+    op.create_table(
+        "password_reset_tokens",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("user_id", sa.Integer(), nullable=False),
+        sa.Column("token_hash", sa.String(length=128), nullable=False),
+        sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("used_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("token_hash"),
+    )
+    op.create_index(
+        op.f("ix_password_reset_tokens_id"),
+        "password_reset_tokens",
+        ["id"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_password_reset_tokens_user_id"),
+        "password_reset_tokens",
+        ["user_id"],
+        unique=False,
+    )
+
+
+def downgrade() -> None:
+    op.drop_index(
+        op.f("ix_password_reset_tokens_user_id"), table_name="password_reset_tokens"
+    )
+    op.drop_index(
+        op.f("ix_password_reset_tokens_id"), table_name="password_reset_tokens"
+    )
+    op.drop_table("password_reset_tokens")
+    op.drop_index(op.f("ix_refresh_tokens_user_id"), table_name="refresh_tokens")
+    op.drop_index(op.f("ix_refresh_tokens_id"), table_name="refresh_tokens")
+    op.drop_table("refresh_tokens")
+    op.drop_index(op.f("ix_contacts_email"), table_name="contacts")
+    op.drop_index(op.f("ix_contacts_last_name"), table_name="contacts")
+    op.drop_index(op.f("ix_contacts_first_name"), table_name="contacts")
+    op.drop_index(op.f("ix_contacts_user_id"), table_name="contacts")
+    op.drop_index(op.f("ix_contacts_id"), table_name="contacts")
+    op.drop_table("contacts")
+    op.drop_index(op.f("ix_users_id"), table_name="users")
+    op.drop_table("users")
